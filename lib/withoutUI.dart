@@ -144,8 +144,8 @@ class _WithoutUIState extends State<WithoutUI> {
     setState(() => _inProgress = true);
     _formKey.currentState.save();
     Charge charge = Charge()
-      ..amount = 10000 // In base currency
-      ..email = 'customer@email.com'
+      ..amount = 20000 * 100 // In base currency
+      ..email = 'customer@gmail.com'
       ..card = _getCardFromUI();
 
     if (!_isLocal) {
@@ -170,53 +170,6 @@ class _WithoutUIState extends State<WithoutUI> {
       setState(() => _inProgress = false);
       _showMessage("Check console for error");
       rethrow;
-    }
-  }
-
-  _startAfreshCharge() async {
-    _formKey.currentState.save();
-
-    Charge charge = Charge();
-    charge.card = _getCardFromUI();
-
-    setState(() => _inProgress = true);
-
-    if (_isLocal) {
-      // Set transaction params directly in app (note that these params
-      // are only used if an access_code is not set. In debug mode,
-      // setting them after setting an access code would throw an exception
-
-      charge
-        ..amount = 10000 // In base currency
-        ..email = 'customer@email.com'
-        ..reference = _getReference()
-        ..putCustomField('Charged From', 'Flutter SDK');
-      _chargeCard(charge);
-    } else {
-      // Perform transaction/initialize on Paystack server to get an access code
-      // documentation: https://developers.paystack.co/reference#initialize-a-transaction
-      charge.accessCode = await _fetchAccessCodeFrmServer(_getReference());
-      _chargeCard(charge);
-    }
-  }
-
-  _chargeCard(Charge charge) async {
-    final response = await PaystackPlugin.chargeCard(context, charge: charge);
-
-    final reference = response.reference;
-
-    // Checking if the transaction is successful
-    if (response.status) {
-      _verifyOnServer(reference);
-      return;
-    }
-
-    // The transaction failed. Checking if we should verify the transaction
-    if (response.verify) {
-      _verifyOnServer(reference);
-    } else {
-      setState(() => _inProgress = false);
-      _updateStatus(reference, response.message);
     }
   }
 
@@ -308,22 +261,6 @@ class _WithoutUIState extends State<WithoutUI> {
     }
 
     return accessCode;
-  }
-
-  void _verifyOnServer(String reference) async {
-    _updateStatus(reference, 'Verifying...');
-    String url = '$backendUrl/verify/$reference';
-    try {
-      http.Response response = await http.get(url);
-      var body = response.body;
-      _updateStatus(reference, body);
-    } catch (e) {
-      _updateStatus(
-          reference,
-          'There was a problem verifying %s on the backend: '
-          '$reference $e');
-    }
-    setState(() => _inProgress = false);
   }
 
   _updateStatus(String reference, String message) {
